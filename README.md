@@ -51,7 +51,7 @@ Settings are read from environment variables (see `.env.example`).
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SECRET_KEY` | insecure development value | JWT signing key — **you must change it** for real use |
+| `SECRET_KEY` | insecure development value | JWT signing key (**you must change it** for real use) |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | token lifetime |
 | `DATABASE_URL` | `sqlite:///./data/app.db` | database connection string |
 | `STORAGE_DIR` | `./data/storage` | directory for stored files |

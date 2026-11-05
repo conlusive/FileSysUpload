@@ -47,7 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.middleware("http")
     async def guard_and_harden(request: Request, call_next):
-        # Рання відмова за заголовком Content-Length — до того, як тіло буде прочитане.
+        # Рання відмова за заголовком Content-Length, до того як тіло буде прочитане.
         if request.method == "POST" and request.url.path == "/files":
             length = request.headers.get("content-length")
             if length and length.isdigit() and int(length) > settings.max_upload_bytes + MULTIPART_OVERHEAD:
