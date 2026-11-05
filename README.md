@@ -1,25 +1,25 @@
 # File Upload Service
 
-Серверний застосунок для **завантаження та обробки файлів** (file upload) — курсова робота.
-Написаний на Python із використанням FastAPI. Надає REST API для автентифікованих користувачів:
-приймає файли (`multipart/form-data`), перевіряє їх за реальним вмістом, обробляє зображення
-(оптимізована копія та мініатюра), зберігає метадані в базі даних SQLite і віддає/видаляє файли.
+A server application for **uploading and processing files** (coursework project).
+Written in Python with FastAPI. It provides a REST API for authenticated users: it accepts files
+(`multipart/form-data`), validates them by their real content, processes images
+(an optimized copy and a thumbnail), stores metadata in a SQLite database, and serves/deletes files.
 
-## Можливості
+## Features
 
-- реєстрація та вхід, автентифікація за **JWT** (OAuth2 password flow), паролі хешуються **scrypt**;
-- потокове читання завантаження порціями з обмеженням розміру (413) та раннім відхиленням за `Content-Length`;
-- визначення типу за **сигнатурою** файлу (JPEG, PNG, GIF, WebP, PDF) і звірка з розширенням та `Content-Type` (415);
-- обробка зображень (Pillow): виправлення EXIF-орієнтації, оптимізована копія (довша сторона ≤ 1600 px),
-  мініатюра (≤ 256 px), стиснення, видалення метаданих; захист від «бомб розпакування»;
-- метадані в БД: ім'я, тип, розмір, SHA-256, розміри зображення, власник, дата;
-- список файлів із пагінацією, фільтром за типом і пошуком за ім'ям, скачування (оригінал / оптимізоване / мініатюра), видалення;
-- кожен користувач бачить лише свої файли (чужі — 404);
-- інтерактивна документація Swagger UI: `/docs`.
+- registration and login, **JWT** authentication (OAuth2 password flow), passwords hashed with **scrypt**;
+- streaming upload read in chunks with a size limit (413) and early rejection by `Content-Length`;
+- file type detection by **signature** (JPEG, PNG, GIF, WebP, PDF), cross-checked against the extension and `Content-Type` (415);
+- image processing (Pillow): EXIF orientation fix, optimized copy (long side ≤ 1600 px),
+  thumbnail (≤ 256 px), compression, metadata stripping; protection against decompression bombs;
+- metadata in the database: name, type, size, SHA-256, image dimensions, owner, date;
+- file listing with pagination, type filter and name search; download (original / optimized / thumbnail); deletion;
+- every user sees only their own files (other users' files return 404);
+- interactive Swagger UI documentation at `/docs`.
 
-## Швидкий старт
+## Quick start
 
-Потрібен Python 3.11+ (перевірено на 3.13).
+Requires Python 3.11+ (tested on 3.13).
 
 ```bash
 python -m venv .venv
@@ -28,72 +28,72 @@ pip install -r requirements.txt
 uvicorn app.asgi:app --reload
 ```
 
-Відкрийте <http://127.0.0.1:8000/docs>: зареєструйтесь (`POST /auth/register`), натисніть **Authorize**,
-введіть логін і пароль та завантажте файл через `POST /files`.
+Open <http://127.0.0.1:8000/docs>: register (`POST /auth/register`), click **Authorize**,
+enter your username and password, then upload a file via `POST /files`.
 
-Демонстраційний сценарій із командного рядка (сервер має працювати):
+Command-line demo scenario (the server must be running):
 
 ```bash
 pip install httpx
 python scripts/demo.py
 ```
 
-## Тести
+## Tests
 
 ```bash
 pip install -r requirements-dev.txt
 pytest --cov=app
 ```
 
-## Конфігурація
+## Configuration
 
-Налаштування читаються зі змінних середовища (див. `.env.example`).
+Settings are read from environment variables (see `.env.example`).
 
-| Змінна | Типове значення | Призначення |
+| Variable | Default | Purpose |
 |---|---|---|
-| `SECRET_KEY` | небезпечне тестове | ключ підпису JWT — **обов'язково змініть** у реальному використанні |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | час життя токена |
-| `DATABASE_URL` | `sqlite:///./data/app.db` | рядок підключення до БД |
-| `STORAGE_DIR` | `./data/storage` | каталог для файлів |
-| `MAX_UPLOAD_MB` | `10` | максимальний розмір файлу |
-| `MAX_IMAGE_PIXELS` | `40000000` | максимальна кількість пікселів зображення |
-| `OPTIMIZED_MAX_SIDE` / `THUMBNAIL_MAX_SIDE` | `1600` / `256` | розміри копій |
-| `JPEG_QUALITY` | `85` | якість JPEG |
+| `SECRET_KEY` | insecure development value | JWT signing key — **you must change it** for real use |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | token lifetime |
+| `DATABASE_URL` | `sqlite:///./data/app.db` | database connection string |
+| `STORAGE_DIR` | `./data/storage` | directory for stored files |
+| `MAX_UPLOAD_MB` | `10` | maximum file size |
+| `MAX_IMAGE_PIXELS` | `40000000` | maximum number of pixels in an image |
+| `OPTIMIZED_MAX_SIDE` / `THUMBNAIL_MAX_SIDE` | `1600` / `256` | sizes of the generated copies |
+| `JPEG_QUALITY` | `85` | JPEG quality |
 
 ## API
 
-| Метод і шлях | Опис |
+| Method and path | Description |
 |---|---|
-| `GET /health` | перевірка працездатності |
-| `POST /auth/register` | реєстрація (JSON: `username`, `password`) |
-| `POST /auth/login` | вхід (form-data) → JWT |
-| `GET /auth/me` | поточний користувач |
-| `POST /files` | завантаження файлу (`multipart/form-data`, поле `file`) |
-| `GET /files` | список: `limit`, `offset`, `kind`, `q` |
-| `GET /files/{id}` | метадані файлу |
-| `GET /files/{id}/download?variant=original\|optimized\|thumbnail` | скачування |
-| `DELETE /files/{id}` | видалення |
+| `GET /health` | health check |
+| `POST /auth/register` | register (JSON: `username`, `password`) |
+| `POST /auth/login` | log in (form data) → JWT |
+| `GET /auth/me` | current user |
+| `POST /files` | upload a file (`multipart/form-data`, field `file`) |
+| `GET /files` | list: `limit`, `offset`, `kind`, `q` |
+| `GET /files/{id}` | file metadata |
+| `GET /files/{id}/download?variant=original\|optimized\|thumbnail` | download |
+| `DELETE /files/{id}` | delete |
 
-## Структура
+## Project structure
 
 ```
 app/
-  main.py          фабрика застосунку, middleware
-  asgi.py          точка запуску для uvicorn
-  config.py        налаштування
-  database.py      підключення до БД
-  models.py        ORM-моделі User, StoredFile
-  schemas.py       Pydantic-схеми
-  security.py      scrypt і JWT
-  deps.py          залежності FastAPI
-  errors.py        винятки
+  main.py          application factory, middleware
+  asgi.py          entry point for uvicorn
+  config.py        settings
+  database.py      database connection
+  models.py        ORM models User, StoredFile
+  schemas.py       Pydantic schemas
+  security.py      scrypt and JWT
+  deps.py          FastAPI dependencies
+  errors.py        exceptions
   routers/         auth.py, files.py
   services/        validation.py, images.py, storage.py
-tests/             автоматичні тести (pytest)
-scripts/demo.py    демонстраційний клієнт
+tests/             automated tests (pytest)
+scripts/demo.py    demo client
 ```
 
-## Обмеження
+## Limitations
 
-Файли зберігаються на диску одного сервера, відсутні CDN, відновлюване завантаження та антивірусна перевірка.
-Для реального використання варто додати HTTPS (зворотний проксі), обмеження частоти запитів і міграції БД.
+Files are stored on the disk of a single server; there is no CDN, resumable upload or antivirus scanning.
+For real-world use, add HTTPS (reverse proxy), rate limiting and database migrations.
