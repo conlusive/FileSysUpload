@@ -17,7 +17,7 @@ class FileType:
 
     name: str
     mime: str
-    extensions: tuple[str, ...]   # перше значення — канонічне розширення для збереження
+    extensions: tuple[str, ...]   # перше значення це канонічне розширення для збереження
     kind: str                     # "image" або "document"
 
 
@@ -49,7 +49,7 @@ def sniff_type(head: bytes) -> FileType | None:
 
 
 def sanitize_filename(raw: str | None) -> str:
-    """Залишає лише безпечне базове ім'я: без шляху, керуючих символів, довше 255 символів — обрізається."""
+    """Залишає лише безпечне базове ім'я: без шляху, керуючих символів, довге ім'я обрізається до 255 символів."""
     name = (raw or "").replace("\x00", "")
     # Беремо останню компоненту як для POSIX, так і для Windows-шляхів.
     name = PureWindowsPath(PurePosixPath(name).name).name
@@ -77,7 +77,7 @@ def validate_declared(file_type: FileType, filename: str, content_type: str | No
         )
     declared = (content_type or "").split(";")[0].strip().lower()
     if declared not in _GENERIC_MIME and declared != file_type.mime:
-        # image/jpg — поширена помилкова назва JPEG
+        # image/jpg це поширена помилкова назва JPEG
         if not (file_type is JPEG and declared == "image/jpg"):
             raise UploadRejected(
                 status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
