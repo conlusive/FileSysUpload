@@ -83,10 +83,10 @@ def test_password_hashing():
     assert first != second                                # різна сіль
     assert verify_password("secret-password", first)
     assert not verify_password("Secret-password", first)
-    assert first.startswith("scrypt$")
+    assert first.startswith("scrypt$32768$8$3$")          # параметри за рекомендацією OWASP
 
 
-@pytest.mark.parametrize("broken", ["", "plain", "md5$1$2$3$4$5", "scrypt$x$y$z$@@$@@", "scrypt$16384$8$1$AAAA"])
+@pytest.mark.parametrize("broken", ["", "plain", "md5$1$2$3$4$5", "scrypt$x$y$z$@@$@@", "scrypt$32768$8$3$AAAA"])
 def test_verify_password_handles_malformed_hash(broken):
     assert verify_password("anything", broken) is False
 

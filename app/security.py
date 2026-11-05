@@ -11,7 +11,9 @@ import jwt
 
 from app.config import Settings
 
-_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
+# Параметри за рекомендацією OWASP Password Storage Cheat Sheet: N = 2^15 (32 МіБ), r = 8, p = 3.
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**15, 8, 3
+_SCRYPT_MAXMEM = 64 * 1024 * 1024
 _DKLEN = 32
 
 
@@ -23,7 +25,8 @@ def hash_password(password: str) -> str:
     """Повертає рядок формату ``scrypt$N$r$p$salt$hash`` (випадкова сіль на кожен пароль)."""
     salt = secrets.token_bytes(16)
     digest = hashlib.scrypt(
-        password.encode("utf-8"), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_DKLEN
+        password.encode("utf-8"), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_DKLEN,
+        maxmem=_SCRYPT_MAXMEM,
     )
     return f"scrypt${_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}${_b64(salt)}${_b64(digest)}"
 
@@ -37,7 +40,8 @@ def verify_password(password: str, stored: str) -> bool:
         salt = base64.b64decode(salt_b64)
         expected = base64.b64decode(hash_b64)
         digest = hashlib.scrypt(
-            password.encode("utf-8"), salt=salt, n=int(n), r=int(r), p=int(p), dklen=len(expected)
+            password.encode("utf-8"), salt=salt, n=int(n), r=int(r), p=int(p), dklen=len(expected),
+            maxmem=_SCRYPT_MAXMEM,
         )
     except (ValueError, TypeError):
         return False
