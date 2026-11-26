@@ -11,6 +11,7 @@ from app import __version__
 from app.config import Settings
 from app.database import Base, make_engine, make_session_factory
 from app.errors import too_large
+from app.middleware import UploadBodyLimitMiddleware
 from app.routers import auth, files
 from app.services.storage import FileStorage
 
@@ -44,6 +45,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.session_factory = make_session_factory(engine)
     app.state.storage = storage
+
+    # Додається першим, тому лишається всередині шару guard_and_harden і відповідь 413 теж отримує nosniff.
+    app.add_middleware(
+        UploadBodyLimitMiddleware,
+        max_body_bytes=settings.max_upload_bytes + MULTIPART_OVERHEAD,
+        max_file_bytes=settings.max_upload_bytes,
+    )
 
     @app.middleware("http")
     async def guard_and_harden(request: Request, call_next):

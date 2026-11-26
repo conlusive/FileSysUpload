@@ -1,6 +1,7 @@
 """Інтеграційні тести ендпоінтів /files: завантаження, обробка, безпека, пагінація, видалення."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 from pathlib import Path
@@ -14,6 +15,8 @@ from app.main import create_app
 from tests.conftest import (
     image_bytes, login_headers, make_settings, pdf_bytes, register, storage_files, tmp_files, upload,
 )
+
+MIB = 1024 * 1024
 
 
 # ---------- успішні сценарії ----------
@@ -187,6 +190,51 @@ def test_oversized_upload_rejected_early_by_content_length(tmp_path):
         response = upload(client, headers, "huge.pdf", pdf_bytes(300_000))        # перевищує ліміт + запас -> рання відмова
         assert response.status_code == 413
         assert storage_files(settings) == []
+
+
+def _post_without_content_length(app, token: str, total_mib: int) -> tuple[int, int]:
+    """Надсилає тіло порціями по 1 МіБ без Content-Length; повертає (код відповіді, прийняті байти)."""
+    head = b'--B\r\nContent-Disposition: form-data; name="file"; filename="a.pdf"\r\n\r\n%PDF-'
+    chunks = [head, *[b"0" * MIB] * total_mib, b"\r\n--B--\r\n"]
+    received = 0
+    statuses: list[int] = []
+
+    async def receive():
+        nonlocal received
+        if not chunks:
+            return {"type": "http.disconnect"}
+        chunk = chunks.pop(0)
+        received += len(chunk)
+        return {"type": "http.request", "body": chunk, "more_body": bool(chunks)}
+
+    async def send(message):
+        if message["type"] == "http.response.start":
+            statuses.append(message["status"])
+
+    scope = {
+        "type": "http", "asgi": {"version": "3.0", "spec_version": "2.3"}, "http_version": "1.1",
+        "method": "POST", "scheme": "http", "path": "/files", "raw_path": b"/files", "query_string": b"",
+        "root_path": "", "client": ("127.0.0.1", 1), "server": ("test", 80),
+        "headers": [
+            (b"content-type", b"multipart/form-data; boundary=B"),
+            (b"authorization", f"Bearer {token}".encode()),
+        ],
+    }
+    asyncio.run(app(scope, receive, send))
+    return statuses[0], received
+
+
+@pytest.mark.parametrize("valid_token", [True, False])
+def test_body_without_content_length_is_cut_off_at_limit(tmp_path, valid_token):
+    settings = make_settings(tmp_path, max_upload_bytes=MIB)
+    app = create_app(settings)
+    with TestClient(app) as client:
+        register(client)
+        token = login_headers(client)["Authorization"].removeprefix("Bearer ") if valid_token else "junk"
+        status_code, received = _post_without_content_length(app, token, total_mib=10)
+        assert status_code == 413
+        assert received <= settings.max_upload_bytes + 2 * MIB     # ліміт + одна порція, а не все тіло
+        assert storage_files(settings) == [] and tmp_files(settings) == []
 
 
 def test_file_exactly_at_limit_is_accepted(tmp_path):

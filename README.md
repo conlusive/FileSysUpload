@@ -79,6 +79,7 @@ Settings are read from environment variables (see `.env.example`).
 ```
 app/
   main.py          application factory, middleware
+  middleware.py    upload body size limit while the request is being received
   asgi.py          entry point for uvicorn
   config.py        settings
   database.py      database connection
