@@ -1,4 +1,4 @@
-# File Upload Service
+# File Upload Service 
 
 A server application for **uploading and processing files** (coursework project).
 Written in Python with FastAPI. It provides a REST API for authenticated users: it accepts files
